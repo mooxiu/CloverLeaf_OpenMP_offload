@@ -66,7 +66,8 @@ endif
 PWD=$(shell pwd)
 ProjectRoot=$(PWD)/..
 InputDecks=$(ProjectRoot)/InputDecks
-LLVM_BUILD=$(PWD)/../llvm-project/build
+JIT_EXECUTOR=$(ProjectRoot)/../xla_jit_code_executor
+LLVM_BUILD=$(ProjectRoot)/../llvm-project/build
 OMP_INCS=-I$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src 
 OMP_LIBS=-L$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src \
   			-L$(LLVM_BUILD)/build/lib
@@ -84,6 +85,11 @@ OMP_LLVM_GPU 	= -fopenmp -fopenmp-version=60 \
 								-lomptarget  \
 								$(OMP_INCS) \
 								$(OMP_LIBS)
+OMP_LLVM_JIT = 	-fopenmp -fopenmp-version=60 \
+								-fopenmp-targets=nvptx64-nvidia-cuda --offload-arch=sm_80 \
+								-lomptarget  \
+								$(OMP_INCS) \
+								$(OMP_LIBS)
 OMP=$(OMP_$(COMPILER))
 
 FLAGS_INTEL     = -O3 #-no-prec-div
@@ -95,6 +101,12 @@ FLAGS_PATHSCALE = -O3
 FLAGS_XL        = -O5 -qipa=partition=large -g -qfullpath -Q -qsigtrap -qextname=flush:ideal_gas_kernel_c:viscosity_kernel_c:pdv_kernel_c:revert_kernel_c:accelerate_kernel_c:flux_calc_kernel_c:advec_cell_kernel_c:advec_mom_kernel_c:reset_field_kernel_c:timer_c:unpack_top_bottom_buffers_c:pack_top_bottom_buffers_c:unpack_left_right_buffers_c:pack_left_right_buffers_c:field_summary_kernel_c:update_halo_kernel_c:generate_chunk_kernel_c:initialise_chunk_kernel_c:calc_dt_kernel_c:clover_unpack_message_bottom_c:clover_pack_message_bottom_c:clover_unpack_message_top_c:clover_pack_message_top_c:clover_unpack_message_right_c:clover_pack_message_right_c:clover_unpack_message_left_c:clover_pack_message_left_c -qlistopt -qattr=full -qlist -qreport -qxref=full -qsource -qsuppress=1506-224:1500-036FLAGS_          = -O3
 FLAGS_LLVM			= -O3
 FLAGS_LLVM_GPU	= -O3
+FLAGS_LLVM_JIT  = -O3
+
+JITFLAG_LLVM_JIT = -mmlir --jit-workdistribute
+JITFLAG_ = 
+JITFLAG=$(JITFLAG_$(COMPILER))
+
 
 CFLAGS_INTEL     = -O3 -restrict -fno-alias #-no-prec-div
 CFLAGS_SUN       = -fast -xipo=2
@@ -105,6 +117,7 @@ CFLAGS_PATHSCALE = -O3
 CFLAGS_XL       = -O5 -qipa=partition=large -g -qfullpath -Q -qlistopt -qattr=full -qlist -qreport -qxref=full -qsource -qsuppress=1506-224:1500-036 -qsrcmsg
 CFLAGS_LLVM      = -O3
 CFLAGS_LLVM_GPU  = -O3
+CFLAGS_LLVM_JIT  = -O3
 CFLAGS_          = -O3
 
 ifdef DEBUG
@@ -190,7 +203,7 @@ clover_leaf: c_lover *.f90 Makefile
 	visit.f90			\
 	clover_leaf.f90     \
 	timer_c.o             \
-	-o clover_leaf; echo $(MESSAGE)
+	-o clover_leaf $(JITFLAG); echo $(MESSAGE)
 
 c_lover: *.c Makefile
 	$(C_MPI_COMPILER) $(CFLAGS)	\
@@ -202,13 +215,17 @@ clean:
 .PHONY: run
 run: 
 	cp $(ProjectRoot)/clover.in ./clover.in
-	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu ./clover_leaf
+	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
+  		LD_PRELOAD=$(JIT_EXECUTOR)/build/libjit-code-executor.so \
+			./clover_leaf
 	mv ./clover.in.tmp ./outputs/clover.$(shell date +%s).in.tmp 
 	mv ./clover.out ./outputs/clover.$(shell date +%s).out
 
 run_%: $(InputDecks)/%.in
 	cp $< ./clover.in
-	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu ./clover_leaf
+	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
+  		LD_PRELOAD=$(JIT_EXECUTOR)/build/libjit-code-executor.so \
+			./clover_leaf
 	mv ./clover.in.tmp ./outputs/clover.$(shell date +%s).in.tmp 
 	mv ./clover.out ./outputs/clover.$(shell date +%s).out
 	
