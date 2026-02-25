@@ -136,8 +136,8 @@ endif
 
 FLAGS=$(FLAGS_$(COMPILER)) $(OMP) $(I3E) $(OPTIONS)
 CFLAGS=$(CFLAGS_$(COMPILER)) $(OMP) $(I3E) $(C_OPTIONS) -c
-MPI_COMPILER=flang 
-C_MPI_COMPILER=clang
+MPI_COMPILER=mpif90
+C_MPI_COMPILER=mpicc
 
 clover_leaf: c_lover *.f90 Makefile
 	$(MPI_COMPILER) $(FLAGS)	\
@@ -203,7 +203,7 @@ run:
 	mv ./clover.in.tmp ./outputs/clover.$(shell date +%s).in.tmp 
 	mv ./clover.out ./outputs/clover.$(shell date +%s).out
 
-run_%: ./InputDecks/%.in
+run_%: ../InputDecks/%.in
 	cp ./clover.in ./clover.in_bk
 	cp $< ./clover.in
 	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu ./clover_leaf
