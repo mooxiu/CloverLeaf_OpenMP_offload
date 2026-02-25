@@ -64,6 +64,8 @@ endif
 
 
 PWD=$(shell pwd)
+ProjectRoot=$(PWD)/..
+InputDecks=$(ProjectRoot)/InputDecks
 LLVM_BUILD=$(PWD)/../llvm-project/build
 OMP_INCS=-I$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src 
 OMP_LIBS=-L$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src \
@@ -199,15 +201,14 @@ clean:
 
 .PHONY: run
 run: 
+	cp $(ProjectRoot)/clover.in ./clover.in
 	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu ./clover_leaf
 	mv ./clover.in.tmp ./outputs/clover.$(shell date +%s).in.tmp 
 	mv ./clover.out ./outputs/clover.$(shell date +%s).out
 
-run_%: ../InputDecks/%.in
-	cp ./clover.in ./clover.in_bk
+run_%: $(InputDecks)/%.in
 	cp $< ./clover.in
 	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu ./clover_leaf
 	mv ./clover.in.tmp ./outputs/clover.$(shell date +%s).in.tmp 
 	mv ./clover.out ./outputs/clover.$(shell date +%s).out
-	cp ./clover.in_bk ./clover.in
 	
