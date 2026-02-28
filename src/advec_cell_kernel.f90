@@ -213,17 +213,10 @@ CONTAINS
 
         ENDDO
       ENDDO
-!$omp target teams distribute parallel do simd collapse(2)
-      DO k=y_min,y_max
-        DO j=x_min,x_max
-          pre_mass_s=density1(j,k)*pre_vol(j,k)
-          post_mass_s=pre_mass_s+mass_flux_y(j,k)-mass_flux_y(j,k+1)
-          post_ener_s=(energy1(j,k)*pre_mass_s+ener_flux(j,k)-ener_flux(j,k+1))/post_mass_s
-          advec_vol_s=pre_vol(j,k)+vol_flux_y(j,k)-vol_flux_y(j,k+1)
-          density1(j,k)=post_mass_s/advec_vol_s
-          energy1(j,k)=post_ener_s
-        ENDDO
-      ENDDO
+      !$omp target teams workdistribute
+        energy1(x_min:x_max,y_min:y_max)=(energy1(x_min:x_max,y_min:y_max)*(density1(x_min:x_max,y_min:y_max)*pre_vol(x_min:x_max,y_min:y_max))+ener_flux(x_min:x_max,y_min:y_max)-ener_flux(x_min:x_max,y_min+1:y_max+1))/(density1(x_min:x_max,y_min:y_max)*pre_vol(x_min:x_max,y_min:y_max)+mass_flux_y(x_min:x_max,y_min:y_max)-mass_flux_y(x_min:x_max,y_min+1:y_max+1))
+        density1(x_min:x_max,y_min:y_max)=(density1(x_min:x_max,y_min:y_max)*pre_vol(x_min:x_max,y_min:y_max)+mass_flux_y(x_min:x_max,y_min:y_max)-mass_flux_y(x_min:x_max,y_min+1:y_max+1))/(pre_vol(x_min:x_max,y_min:y_max)+vol_flux_y(x_min:x_max,y_min:y_max)-vol_flux_y(x_min:x_max,y_min+1:y_max+1))
+      !$omp end target teams workdistribute
 
     ENDIF
 
