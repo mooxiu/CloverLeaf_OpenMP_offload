@@ -82,24 +82,56 @@ CONTAINS
 
 
     IF(mom_sweep.EQ.1)THEN ! x 1
+      ! !$omp target teams distribute parallel do simd collapse(2)
+      ! DO k=y_min-2,y_max+2
+      !   DO j=x_min-2,x_max+2
+      !     post_vol(j,k)= volume(j,k)+vol_flux_y(j  ,k+1)-vol_flux_y(j,k)
+      !     pre_vol(j,k)=post_vol(j,k)+vol_flux_x(j+1,k  )-vol_flux_x(j,k)
+      !   ENDDO
+      ! ENDDO
+
       !$omp target teams workdistribute
         post_vol(x_min-2:x_max+2,y_min-2:y_max+2)= volume(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_y(x_min-2:x_max+2,y_min-1:y_max+3)-vol_flux_y(x_min-2:x_max+2,y_min-2:y_max+2)
         pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=post_vol(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_x(x_min-1:x_max+3,y_min-2:y_max+2)-vol_flux_x(x_min-2:x_max+2,y_min-2:y_max+2)
       !$omp end target teams workdistribute
 
     ELSEIF(mom_sweep.EQ.2)THEN ! y 1
+      ! !$omp target teams distribute parallel do simd collapse(2)
+      ! DO k=y_min-2,y_max+2
+      !   DO j=x_min-2,x_max+2
+      !     post_vol(j,k)= volume(j,k)+vol_flux_x(j+1,k  )-vol_flux_x(j,k)
+      !     pre_vol(j,k)=post_vol(j,k)+vol_flux_y(j  ,k+1)-vol_flux_y(j,k)
+      !   ENDDO
+      ! ENDDO
+
       !$omp target teams workdistribute
         post_vol(x_min-2:x_max+2,y_min-2:y_max+2)= volume(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_x(x_min-1:x_max+3,y_min-2:y_max+2)-vol_flux_x(x_min-2:x_max+2,y_min-2:y_max+2)
         pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=post_vol(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_y(x_min-2:x_max+2,y_min-1:y_max+3)-vol_flux_y(x_min-2:x_max+2,y_min-2:y_max+2)
       !$omp end target teams workdistribute
 
     ELSEIF(mom_sweep.EQ.3)THEN ! x 2
+      ! !$omp target teams distribute parallel do simd collapse(2)
+      ! DO k=y_min-2,y_max+2
+      !   DO j=x_min-2,x_max+2
+      !     post_vol(j,k)=volume(j,k)
+      !     pre_vol(j,k)=post_vol(j,k)+vol_flux_y(j  ,k+1)-vol_flux_y(j,k)
+      !   ENDDO
+      ! ENDDO
+
       !$omp target teams workdistribute
         post_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)
         pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=post_vol(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_y(x_min-2:x_max+2,y_min-1:y_max+3)-vol_flux_y(x_min-2:x_max+2,y_min-2:y_max+2)
       !$omp end target teams workdistribute
 
     ELSEIF(mom_sweep.EQ.4)THEN ! y 2
+      ! !$omp target teams distribute parallel do simd collapse(2)
+      ! DO k=y_min-2,y_max+2
+      !   DO j=x_min-2,x_max+2
+      !     post_vol(j,k)=volume(j,k)
+      !     pre_vol(j,k)=post_vol(j,k)+vol_flux_x(j+1,k  )-vol_flux_x(j,k)
+      !   ENDDO
+      ! ENDDO
+
       !$omp target teams workdistribute
         post_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)
         pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=post_vol(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_x(x_min-1:x_max+3,y_min-2:y_max+2)-vol_flux_x(x_min-2:x_max+2,y_min-2:y_max+2)
