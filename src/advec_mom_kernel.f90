@@ -108,16 +108,39 @@ CONTAINS
 
     IF(direction.EQ.1)THEN
       IF(which_vel.EQ.1)THEN
+
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min,y_max+1
+!           DO j=x_min-2,x_max+2
+!             ! Find staggered mesh mass fluxes, nodal masses and volumes.
+!             node_flux(j,k)=0.25_8*(mass_flux_x(j,k-1  )+mass_flux_x(j  ,k)  &
+!               +mass_flux_x(j+1,k-1)+mass_flux_x(j+1,k))
+!           ENDDO
+!         ENDDO
+
       !$omp target teams workdistribute
         node_flux(x_min-2:x_max+2,y_min:y_max+1)=0.25_8*(mass_flux_x(x_min-2:x_max+2,y_min-1:y_max)+mass_flux_x(x_min-2:x_max+2,y_min:y_max+1)+mass_flux_x(x_min-1:x_max+3,y_min-1:y_max)+mass_flux_x(x_min-1:x_max+3,y_min:y_max+1))
       !$omp end target teams workdistribute
 
+
+
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min,y_max+1
+!           DO j=x_min-1,x_max+2
+!             ! Staggered cell mass post advection
+!             node_mass_post(j,k)=0.25_8*(density1(j  ,k-1)*post_vol(j  ,k-1)                   &
+!               +density1(j  ,k  )*post_vol(j  ,k  )                   &
+!               +density1(j-1,k-1)*post_vol(j-1,k-1)                   &
+!               +density1(j-1,k  )*post_vol(j-1,k  ))
+!             node_mass_pre(j,k)=node_mass_post(j,k)-node_flux(j-1,k)+node_flux(j,k)
+!           ENDDO
+!         ENDDO
+!
+
       !$omp target teams workdistribute
         ! Staggered cell mass post advection
-        node_mass_post(x_min-1:x_max+2,y_min:y_max+1)=0.25_8*(density1(x_min-1:x_max+2,y_min-1:y_max)*post_vol(x_min-1:x_max+2,y_min-1:y_max)                   &
-          +density1(x_min-1:x_max+2  ,y_min:y_max+1  )*post_vol(x_min-1:x_max+2  ,y_min:y_max+1  )                   &
-          +density1(x_min-2:x_max+1,y_min-1:y_max)*post_vol(x_min-2:x_max+1,y_min-1:y_max)                   &
-          +density1(x_min-2:x_max+1,y_min:y_max+1  )*post_vol(x_min-2:x_max+1,y_min:y_max+1  ))
+        node_mass_post(x_min-1:x_max+2,y_min:y_max+1)=0.25_8*(density1(x_min-1:x_max+2,y_min-1:y_max)*post_vol(x_min-1:x_max+2,y_min-1:y_max) +density1(x_min-1:x_max+2,y_min:y_max+1)*post_vol(x_min-1:x_max+2,y_min:y_max+1) +density1(x_min-2:x_max+1,y_min-1:y_max)*post_vol(x_min-2:x_max+1,y_min-1:y_max) +density1(x_min-2:x_max+1,y_min:y_max+1)*post_vol(x_min-2:x_max+1,y_min:y_max+1))
+
         node_mass_pre(x_min-1:x_max+2,y_min:y_max+1)=node_mass_post(x_min-1:x_max+2,y_min:y_max+1)-node_flux(x_min-2:x_max+1,y_min:y_max+1)+node_flux(x_min-1:x_max+2,y_min:y_max+1)
       !$omp end target teams workdistribute
     ENDIF
@@ -152,34 +175,57 @@ CONTAINS
           mom_flux(j,k)=advec_vel_s*node_flux(j,k)
         ENDDO
       ENDDO
-!$omp target teams distribute parallel do simd collapse(2)
-      DO k=y_min,y_max+1
-        DO j=x_min,x_max+1
-          vel1 (j,k)=(vel1 (j,k)*node_mass_pre(j,k)+mom_flux(j-1,k)-mom_flux(j,k))/node_mass_post(j,k)
-        ENDDO
-      ENDDO
+!
+! !$omp target teams distribute parallel do simd collapse(2)
+!       DO k=y_min,y_max+1
+!         DO j=x_min,x_max+1
+!           vel1 (j,k)=(vel1 (j,k)*node_mass_pre(j,k)+mom_flux(j-1,k)-mom_flux(j,k))/node_mass_post(j,k)
+!         ENDDO
+!       ENDDO
+
+      !$omp target teams workdistribute
+        vel1 (x_min:x_max+1,y_min:y_max+1)=(vel1(x_min:x_max+1,y_min:y_max+1)*node_mass_pre(x_min:x_max+1,y_min:y_max+1)+mom_flux(x_min-1:x_max,y_min:y_max+1)-mom_flux(x_min:x_max+1,y_min:y_max+1))/node_mass_post(x_min:x_max+1,y_min:y_max+1)
+      !$omp end target teams workdistribute
+
 
     ELSEIF(direction.EQ.2)THEN
       IF(which_vel.EQ.1)THEN
-!$omp target teams distribute parallel do simd collapse(2)
-        DO k=y_min-2,y_max+2
-          DO j=x_min,x_max+1
-            ! Find staggered mesh mass fluxes and nodal masses and volumes.
-            node_flux(j,k)=0.25_8*(mass_flux_y(j-1,k  )+mass_flux_y(j  ,k  ) &
-              +mass_flux_y(j-1,k+1)+mass_flux_y(j  ,k+1))
-          ENDDO
-        ENDDO
-!$omp target teams distribute parallel do simd collapse(2)
-        DO k=y_min-1,y_max+2
-          DO j=x_min,x_max+1
-            node_mass_post(j,k)=0.25_8*(density1(j  ,k-1)*post_vol(j  ,k-1)                     &
-              +density1(j  ,k  )*post_vol(j  ,k  )                     &
-              +density1(j-1,k-1)*post_vol(j-1,k-1)                     &
-              +density1(j-1,k  )*post_vol(j-1,k  ))
-            node_mass_pre(j,k)=node_mass_post(j,k)-node_flux(j,k-1)+node_flux(j,k)
-          ENDDO
-        ENDDO
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min-2,y_max+2
+!           DO j=x_min,x_max+1
+!             ! Find staggered mesh mass fluxes and nodal masses and volumes.
+!             node_flux(j,k)=0.25_8*(mass_flux_y(j-1,k  )+mass_flux_y(j  ,k  ) &
+!               +mass_flux_y(j-1,k+1)+mass_flux_y(j  ,k+1))
+!           ENDDO
+!         ENDDO
+
+      !$omp target teams workdistribute
+        ! Find staggered mesh mass fluxes and nodal masses and volumes.
+        node_flux(x_min:x_max+1,y_min-2:y_max+2)=0.25_8*(mass_flux_y(x_min-1:x_max,y_min-2:y_max+2  )+mass_flux_y(x_min:x_max+1,y_min-2:y_max+2) +mass_flux_y(x_min-1:x_max,y_min-1:y_max+3)+mass_flux_y(x_min:x_max+1  ,y_min-1:y_max+3))
+      !$omp end target teams workdistribute
+
+
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min-1,y_max+2
+!           DO j=x_min,x_max+1
+!             node_mass_post(j,k)=0.25_8*(density1(j  ,k-1)*post_vol(j  ,k-1)                     &
+!               +density1(j  ,k  )*post_vol(j  ,k  )                     &
+!               +density1(j-1,k-1)*post_vol(j-1,k-1)                     &
+!               +density1(j-1,k  )*post_vol(j-1,k  ))
+!             node_mass_pre(j,k)=node_mass_post(j,k)-node_flux(j,k-1)+node_flux(j,k)
+!           ENDDO
+!         ENDDO
+
+      !$omp target teams workdistribute
+        node_mass_post(x_min:x_max+1,y_min-1:y_max+2)=0.25_8*(density1(x_min:x_max+1,y_min-2:y_max+1)*post_vol(x_min:x_max+1,y_min-2:y_max+1)     &
+          +density1(x_min:x_max+1  ,y_min-1:y_max+2  )*post_vol(x_min:x_max+1  ,y_min-1:y_max+2  )                      &
+          +density1(x_min-1:x_max,y_min-2:y_max+1)*post_vol(x_min-1:x_max,y_min-2:y_max+1)                      &
+          +density1(x_min-1:x_max,y_min-1:y_max+2  )*post_vol(x_min-1:x_max,y_min-1:y_max+2  ))
+        node_mass_pre(x_min:x_max+1,y_min-1:y_max+2)=node_mass_post(x_min:x_max+1,y_min-1:y_max+2)-node_flux(x_min:x_max+1,y_min-2:y_max+1)+node_flux(x_min:x_max+1,y_min-1:y_max+2)
+      !$omp end target teams workdistribute
+
       ENDIF
+
 !$omp target teams distribute parallel do simd collapse(2)
       DO k=y_min-1,y_max+1
         DO j=x_min,x_max+1
@@ -211,12 +257,17 @@ CONTAINS
           mom_flux(j,k)=advec_vel_s*node_flux(j,k)
         ENDDO
       ENDDO
-!$omp target teams distribute parallel do simd collapse(2)
-      DO k=y_min,y_max+1
-        DO j=x_min,x_max+1
-          vel1 (j,k)=(vel1(j,k)*node_mass_pre(j,k)+mom_flux(j,k-1)-mom_flux(j,k))/node_mass_post(j,k)
-        ENDDO
-      ENDDO
+
+! !$omp target teams distribute parallel do simd collapse(2)
+!       DO k=y_min,y_max+1
+!         DO j=x_min,x_max+1
+!           vel1 (j,k)=(vel1(j,k)*node_mass_pre(j,k)+mom_flux(j,k-1)-mom_flux(j,k))/node_mass_post(j,k)
+!         ENDDO
+!       ENDDO
+
+      !$omp target teams workdistribute
+        vel1(x_min:x_max+1,y_min:y_max+1)=(vel1(x_min:x_max+1,y_min:y_max+1)*node_mass_pre(x_min:x_max+1,y_min:y_max+1)+mom_flux(x_min:x_max+1,y_min-1:y_max)-mom_flux(x_min:x_max+1,y_min:y_max+1))/node_mass_post(x_min:x_max+1,y_min:y_max+1)
+      !$omp end target teams workdistribute
 
     ENDIF
 
