@@ -1,4 +1,5 @@
 src/*.mod
 src/outputs/
+src/outputs_advec_cell_mom_kernels/
 src/*.o
 clover_leaf
