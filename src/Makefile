@@ -237,7 +237,7 @@ nsys_run_%: $(InputDecks)/%.in
 	rm ./clover.in.tmp  
 	mv ./clover.out ./outputs/clover.nsys.$*.$(shell date +%s).out
 	
-nsys_run_%: $(InputDecks)/%.in
+ncu_run_%: $(InputDecks)/%.in
 	cp $< ./clover.in
 	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
   		LD_PRELOAD=$(JIT_EXECUTOR)/build/libjit-code-executor.so \
