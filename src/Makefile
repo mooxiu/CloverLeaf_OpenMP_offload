@@ -233,15 +233,15 @@ nsys_run_%: $(InputDecks)/%.in
 	cp $< ./clover.in
 	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
   		LD_PRELOAD=$(JIT_EXECUTOR)/build/libjit-code-executor.so \
-			nsys profile -t cuda,nvtx,osrt --stats=true --force-overwrite=true -o nsys_report ./clover_leaf
+			nsys profile -t cuda,nvtx,osrt --stats=true --force-overwrite=true -o ./outputs/nsys_report.$(shell date +%s) ./clover_leaf
 	rm ./clover.in.tmp  
 	mv ./clover.out ./outputs/clover.nsys.$*.$(shell date +%s).out
 	
-ncu_run_%: $(InputDecks)/%.in
-	cp $< ./clover.in
-	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
-  		LD_PRELOAD=$(JIT_EXECUTOR)/build/libjit-code-executor.so \
-			ncu --set full -k "regex_of_your_target_kernel" -s 2 -c 1 -o ncu_report ./clover_leaf
-	rm ./clover.in.tmp  
-	mv ./clover.out ./outputs/clover.ncu.$*.$(shell date +%s).out
-	
+# ncu_run_%: $(InputDecks)/%.in
+# 	cp $< ./clover.in
+# 	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
+#   		LD_PRELOAD=$(JIT_EXECUTOR)/build/libjit-code-executor.so \
+# 			ncu --set full -k "the slow kernel we're checking" -s 2 -c 1 -o ./outputs/ncu_report.$(shell date +%s) ./clover_leaf
+# 	rm ./clover.in.tmp  
+# 	mv ./clover.out ./outputs/clover.ncu.$*.$(shell date +%s).out
+#
