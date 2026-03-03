@@ -131,8 +131,7 @@ CONTAINS
 !         ENDDO
 !       ENDDO
 
-      ! In this implementation, temp arrays are not used
-      ! But we can use temp arrays to improve performance
+
 
       !$omp target teams workdistribute
           total_flux_arr =
