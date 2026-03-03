@@ -75,7 +75,12 @@ CONTAINS
           chunk%tiles(tile)%field%xvel1,      &
           chunk%tiles(tile)%field%yvel0,      &
           chunk%tiles(tile)%field%yvel1,      &
-          chunk%tiles(tile)%field%work_array1 )
+          chunk%tiles(tile)%field%work_array1, & 
+          chunk%tiles(tile)%field%work_array2, &
+          chunk%tiles(tile)%field%work_array3, &
+          chunk%tiles(tile)%field%work_array4, &
+          chunk%tiles(tile)%field%work_array5 
+        )
 
 
       ENDDO

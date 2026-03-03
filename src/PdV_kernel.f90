@@ -131,6 +131,32 @@ CONTAINS
         ENDDO
       ENDDO
 
+      ! In this implementation, temp arrays are not used
+      ! But we can use temp arrays to improve performance
+
+      !$omp target teams workdistribute
+      DO k=y_min,y_max
+!PRIVATE(right_flux,left_flux,top_flux,bottom_flux,total_flux,min_cell_volume,energy_change,recip_volume,volume_change_s)
+        DO j=x_min,x_max
+
+          left_flux=  (xarea(j  ,k  )*(xvel0(j  ,k  )+xvel0(j  ,k+1)+xvel1(j  ,k  )+xvel1(j  ,k+1)))*0.25_8*dt
+          right_flux= (xarea(j+1,k  )*(xvel0(j+1,k  )+xvel0(j+1,k+1)+xvel1(j+1,k  )+xvel1(j+1,k+1)))*0.25_8*dt
+          bottom_flux=(yarea(j  ,k  )*(yvel0(j  ,k  )+yvel0(j+1,k  )+yvel1(j  ,k  )+yvel1(j+1,k  )))*0.25_8*dt
+          top_flux=   (yarea(j  ,k+1)*(yvel0(j  ,k+1)+yvel0(j+1,k+1)+yvel1(j  ,k+1)+yvel1(j+1,k+1)))*0.25_8*dt
+
+          min_cell_volume=MIN(volume(j,k)+right_flux-left_flux+top_flux-bottom_flux &
+            ,volume(j,k)+right_flux-left_flux                      &
+            ,volume(j,k)+top_flux-bottom_flux)
+ 
+          energy1(j,k)=energy0(j,k)-((pressure(j,k)/density0(j,k)+viscosity(j,k)/density0(j,k))*total_flux*(1.0/volume(j,k)))
+
+          density1(j,k)=density0(j,k)*(volume(j,k)/(volume(j,k)+(right_flux-left_flux+top_flux-bottom_flux)))
+
+        ENDDO
+      ENDDO
+      !$omp end target teams workdistribute
+
+
   ENDIF
 
   END SUBROUTINE PdV_kernel
