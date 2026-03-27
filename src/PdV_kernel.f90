@@ -98,21 +98,22 @@ CONTAINS
 !       ENDDO
 
     !$omp target teams workdistribute
-          total_flux= &
-            (xarea(x_min+1:x_max+1,y_min:y_max  )*(xvel0(x_min+1:x_max+1,y_min:y_max
-          )+xvel0(x_min+1:x_max+1,y_min+1:y_max+1)+xvel0(x_min+1:x_max+1,y_min:y_max  )+xvel0(x_min+1:x_max+1,y_min+1:y_max+1)))*0.25_8*dt*0.5 - &
-            (xarea(x_min:x_max  ,y_min:y_max  )*(xvel0(x_min:x_max  ,y_min:y_max  )+xvel0(x_min:x_max
-          ,y_min+1:y_max+1)+xvel0(x_min:x_max  ,y_min:y_max  )+xvel0(x_min:x_max  ,y_min+1:y_max+1)))*0.25_8*dt*0.5 + &
-            (yarea(x_min:x_max  ,y_min+1:y_max+1)*(yvel0(x_min:x_max
-          ,y_min+1:y_max+1)+yvel0(x_min+1:x_max+1,y_min+1:y_max+1)+yvel0(x_min:x_max
-          ,y_min+1:y_max+1)+yvel0(x_min+1:x_max+1,y_min+1:y_max+1)))*0.25_8*dt*0.5 - &
-            (yarea(x_min:x_max  ,y_min:y_max  )*(yvel0(x_min:x_max  ,y_min:y_max  )+yvel0(x_min+1:x_max+1,y_min:y_max
-          )+yvel0(x_min:x_max  ,y_min:y_max  )+yvel0(x_min+1:x_max+1,y_min:y_max  )))*0.25_8*dt*0.5
+          total_flux_arr(x_min:x_max, y_min:y_max)= &
+            (xarea(x_min+1:x_max+1,y_min:y_max  )*(xvel0(x_min+1:x_max+1,y_min:y_max)+xvel0(x_min+1:x_max+1,y_min+1:y_max+1)+xvel0(x_min+1:x_max+1,y_min:y_max  )+xvel0(x_min+1:x_max+1,y_min+1:y_max+1)))*0.25_8*dt*0.5 - &
+            (xarea(x_min:x_max  ,y_min:y_max  )*(xvel0(x_min:x_max  ,y_min:y_max  )+xvel0(x_min:x_max,y_min+1:y_max+1)+xvel0(x_min:x_max  ,y_min:y_max  )+xvel0(x_min:x_max  ,y_min+1:y_max+1)))*0.25_8*dt*0.5 + &
+            (yarea(x_min:x_max  ,y_min+1:y_max+1)*(yvel0(x_min:x_max,y_min+1:y_max+1)+yvel0(x_min+1:x_max+1,y_min+1:y_max+1)+yvel0(x_min:x_max,y_min+1:y_max+1)+yvel0(x_min+1:x_max+1,y_min+1:y_max+1)))*0.25_8*dt*0.5 - &
+            (yarea(x_min:x_max  ,y_min:y_max  )*(yvel0(x_min:x_max  ,y_min:y_max  )+yvel0(x_min+1:x_max+1,y_min:y_max)+yvel0(x_min:x_max  ,y_min:y_max  )+yvel0(x_min+1:x_max+1,y_min:y_max  )))*0.25_8*dt*0.5
 
-          energy1(x_min:x_max,y_min:y_max)=energy0(x_min:x_max,y_min:y_max)-((pressure(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max)+viscosity(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max))*total_flux*(1.0/volume(x_min:x_max,y_min:y_max)))
+          energy1(x_min:x_max,y_min:y_max)= &
+            energy0(x_min:x_max,y_min:y_max)- &
+            ( &
+              (pressure(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max)+viscosity(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max))* & 
+              total_flux_arr(x_min:x_max,y_min:y_max)* &
+              (1.0/volume(x_min:x_max,y_min:y_max)) &
+            )
 
-          density1(x_min:x_max,y_min:y_max)=density0(x_min:x_max,y_min:y_max)*(volume(x_min:x_max,y_min:y_max)/(volume(x_min:x_max,y_min:y_max)+total_flux))
-    !$omp target teams workdistribute
+          density1(x_min:x_max,y_min:y_max)=density0(x_min:x_max,y_min:y_max)*(volume(x_min:x_max,y_min:y_max)/(volume(x_min:x_max,y_min:y_max)+total_flux_arr(x_min:x_max,y_min:y_max)))
+      !$omp end target teams workdistribute
 
 
 
@@ -158,7 +159,13 @@ CONTAINS
           (yarea(x_min:x_max,y_min+1:y_max+1)*(yvel0(x_min:x_max,y_min+1:y_max+1)+yvel0(x_min+1:x_max+1,y_min+1:y_max+1)+yvel1(x_min:x_max,y_min+1:y_max+1)+yvel1(x_min+1:x_max+1,y_min+1:y_max+1)))*0.25_8*dt- &
           (yarea(x_min:x_max  ,y_min:y_max  )*(yvel0(x_min:x_max  ,y_min:y_max  )+yvel0(x_min+1:x_max+1,y_min:y_max)+yvel1(x_min:x_max  ,y_min:y_max  )+yvel1(x_min+1:x_max+1,y_min:y_max  )))*0.25_8*dt
 
-          energy1(x_min:x_max,y_min:y_max)=energy0(x_min:x_max,y_min:y_max)-(pressure(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max)+viscosity(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max))*total_flux_arr(x_min:x_max,y_min:y_max)*(1.0/volume(x_min:x_max,y_min:y_max))
+          energy1(x_min:x_max,y_min:y_max)= &
+            energy0(x_min:x_max,y_min:y_max)- &
+            ( &
+              (pressure(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max)+viscosity(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max))* &
+              total_flux_arr(x_min:x_max,y_min:y_max)* &
+              (1.0/volume(x_min:x_max,y_min:y_max)) &
+            )
 
           density1(x_min:x_max,y_min:y_max)=density0(x_min:x_max,y_min:y_max)*(volume(x_min:x_max,y_min:y_max)/(volume(x_min:x_max,y_min:y_max)+total_flux_arr(x_min:x_max,y_min:y_max)))
       !$omp end target teams workdistribute
