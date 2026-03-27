@@ -67,7 +67,7 @@ PWD=$(shell pwd)
 ProjectRoot=$(PWD)/..
 InputDecks=$(ProjectRoot)/InputDecks
 JIT_EXECUTOR=$(ProjectRoot)/../xla_jit_code_executor
-LLVM_BUILD=$(ProjectRoot)/../llvm-project-ref/build_memkf04
+LLVM_BUILD=$(ProjectRoot)/../llvm-project/build-memkf04
 OMP_INCS=-I$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src 
 OMP_LIBS=-L$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src \
   			-L$(LLVM_BUILD)/build/lib
@@ -152,10 +152,11 @@ endif
 FLAGS=$(FLAGS_$(COMPILER)) $(OMP) $(I3E) $(OPTIONS)
 CFLAGS=$(CFLAGS_$(COMPILER)) $(OMP) $(I3E) $(C_OPTIONS) -c
 MPI_COMPILER=mpif90
-C_MPI_COMPILER=mpicc
+MPI_COMPILER_FLAG=OMPI_FC=$(LLVM_BUILD)/bin/flang
+C_MPI_COMPILER=mpicc # not be used in our test
 
 clover_leaf: c_lover *.f90 Makefile
-	$(MPI_COMPILER) $(FLAGS)	\
+	$(MPI_COMPILER_FLAG) $(MPI_COMPILER) $(FLAGS)	\
 	data.f90			\
 	definitions.f90			\
 	pack_kernel.f90			\
