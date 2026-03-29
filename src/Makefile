@@ -67,7 +67,7 @@ PWD=$(shell pwd)
 ProjectRoot=$(PWD)/..
 InputDecks=$(ProjectRoot)/InputDecks
 JIT_EXECUTOR=$(ProjectRoot)/../xla_jit_code_executor
-LLVM_BUILD=$(ProjectRoot)/../llvm-project/build-memkf04
+LLVM_BUILD=$(ProjectRoot)/../llvm-project-ref/build-memkf04
 OMP_INCS=-I$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src 
 OMP_LIBS=-L$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src \
   			-L$(LLVM_BUILD)/build/lib
@@ -216,16 +216,14 @@ clean:
 .PHONY: run
 run: 
 	cp $(ProjectRoot)/clover.in ./clover.in
-	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
-  		LD_PRELOAD=$(JIT_EXECUTOR)/build_memkf04/libjit-code-executor.so \
+	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src \
 			./clover_leaf
 	rm ./clover.in.tmp  
 	mv ./clover.out ./outputs/clover.$(shell date +%s).clover.out
 
 run_%: $(InputDecks)/%.in
 	cp $< ./clover.in
-	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src:$(JIT_EXECUTOR)/third_party/libs \
-  		LD_PRELOAD=$(JIT_EXECUTOR)/build_memkf04/libjit-code-executor.so \
+	LD_LIBRARY_PATH=~/opt/llvm-project/release/install/lib/x86_64-unknown-linux-gnu:$(LLVM_BUILD)/runtimes/runtimes-bins/openmp/runtime/src \
 			./clover_leaf
 	rm ./clover.in.tmp  
 	mv ./clover.out ./outputs/clover.$(shell date +%s).$*.out
