@@ -39,7 +39,7 @@ CONTAINS
                         xvel1,                                            &
                         yvel0,                                            &
                         yvel1,                                            &
-                        total_flux_arr )
+                        volume_change                                     )
 
     IMPLICIT NONE
 
@@ -56,7 +56,7 @@ CONTAINS
     REAL(KIND=8), DIMENSION(x_min-2:x_max+2,y_min-2:y_max+2) :: viscosity
     REAL(KIND=8), DIMENSION(x_min-2:x_max+3,y_min-2:y_max+3) :: xvel0,yvel0
     REAL(KIND=8), DIMENSION(x_min-2:x_max+3,y_min-2:y_max+3) :: xvel1,yvel1
-    REAL(KIND=8), DIMENSION(x_min-2:x_max+3,y_min-2:y_max+3) :: total_flux_arr 
+    REAL(KIND=8), DIMENSION(x_min-2:x_max+3,y_min-2:y_max+3) :: volume_change
 
     INTEGER :: j,k
 
@@ -82,9 +82,9 @@ CONTAINS
 
           volume_change_s=volume(j,k)/(volume(j,k)+total_flux)
 
-          ! min_cell_volume=MIN(volume(j,k)+right_flux-left_flux+top_flux-bottom_flux &
-          !   ,volume(j,k)+right_flux-left_flux                      &
-          !   ,volume(j,k)+top_flux-bottom_flux)
+          min_cell_volume=MIN(volume(j,k)+right_flux-left_flux+top_flux-bottom_flux &
+            ,volume(j,k)+right_flux-left_flux                      &
+            ,volume(j,k)+top_flux-bottom_flux)
  
           recip_volume=1.0/volume(j,k)
 
@@ -99,52 +99,37 @@ CONTAINS
 
 
     ELSE
-! !$omp target teams distribute parallel do simd collapse(2)
-!       DO k=y_min,y_max
-! !PRIVATE(right_flux,left_flux,top_flux,bottom_flux,total_flux,min_cell_volume,energy_change,recip_volume,volume_change_s)
-!         DO j=x_min,x_max
-!
-!           left_flux=  (xarea(j  ,k  )*(xvel0(j  ,k  )+xvel0(j  ,k+1)                     &
-!             +xvel1(j  ,k  )+xvel1(j  ,k+1)))*0.25_8*dt
-!           right_flux= (xarea(j+1,k  )*(xvel0(j+1,k  )+xvel0(j+1,k+1)                     &
-!             +xvel1(j+1,k  )+xvel1(j+1,k+1)))*0.25_8*dt
-!           bottom_flux=(yarea(j  ,k  )*(yvel0(j  ,k  )+yvel0(j+1,k  )                     &
-!             +yvel1(j  ,k  )+yvel1(j+1,k  )))*0.25_8*dt
-!           top_flux=   (yarea(j  ,k+1)*(yvel0(j  ,k+1)+yvel0(j+1,k+1)                     &
-!             +yvel1(j  ,k+1)+yvel1(j+1,k+1)))*0.25_8*dt
-!           total_flux=right_flux-left_flux+top_flux-bottom_flux
-!
-!           volume_change_s=volume(j,k)/(volume(j,k)+total_flux)
-!
-!           ! min_cell_volume=MIN(volume(j,k)+right_flux-left_flux+top_flux-bottom_flux &
-!           !   ,volume(j,k)+right_flux-left_flux                      &
-!           !   ,volume(j,k)+top_flux-bottom_flux)
-!
-!           recip_volume=1.0/volume(j,k)
-!
-!           energy_change=(pressure(j,k)/density0(j,k)+viscosity(j,k)/density0(j,k))*total_flux*recip_volume
-!
-!           energy1(j,k)=energy0(j,k)-energy_change
-!
-!           density1(j,k)=density0(j,k)*volume_change_s
-!
-!         ENDDO
-!       ENDDO
+!$omp target teams distribute parallel do simd collapse(2)
+      DO k=y_min,y_max
+!PRIVATE(right_flux,left_flux,top_flux,bottom_flux,total_flux,min_cell_volume,energy_change,recip_volume,volume_change_s)
+        DO j=x_min,x_max
 
+          left_flux=  (xarea(j  ,k  )*(xvel0(j  ,k  )+xvel0(j  ,k+1)                     &
+            +xvel1(j  ,k  )+xvel1(j  ,k+1)))*0.25_8*dt
+          right_flux= (xarea(j+1,k  )*(xvel0(j+1,k  )+xvel0(j+1,k+1)                     &
+            +xvel1(j+1,k  )+xvel1(j+1,k+1)))*0.25_8*dt
+          bottom_flux=(yarea(j  ,k  )*(yvel0(j  ,k  )+yvel0(j+1,k  )                     &
+            +yvel1(j  ,k  )+yvel1(j+1,k  )))*0.25_8*dt
+          top_flux=   (yarea(j  ,k+1)*(yvel0(j  ,k+1)+yvel0(j+1,k+1)                     &
+            +yvel1(j  ,k+1)+yvel1(j+1,k+1)))*0.25_8*dt
+          total_flux=right_flux-left_flux+top_flux-bottom_flux
 
+          volume_change_s=volume(j,k)/(volume(j,k)+total_flux)
 
-      !$omp target teams workdistribute
-          total_flux_arr(x_min:x_max,y_min:y_max) = &
-            (xarea(x_min+1:x_max+1,y_min:y_max)*(xvel0(x_min+1:x_max+1,y_min:y_max)+xvel0(x_min+1:x_max+1,y_min+1:y_max+1)+xvel1(x_min+1:x_max+1,y_min:y_max)+xvel1(x_min+1:x_max+1,y_min+1:y_max+1)))*0.25_8*dt - &
-          (xarea(x_min:x_max  ,y_min:y_max  )*(xvel0(x_min:x_max  ,y_min:y_max)+xvel0(x_min:x_max,y_min+1:y_max+1)+xvel1(x_min:x_max  ,y_min:y_max  )+xvel1(x_min:x_max  ,y_min+1:y_max+1)))*0.25_8*dt+ &
-          (yarea(x_min:x_max,y_min+1:y_max+1)*(yvel0(x_min:x_max,y_min+1:y_max+1)+yvel0(x_min+1:x_max+1,y_min+1:y_max+1)+yvel1(x_min:x_max,y_min+1:y_max+1)+yvel1(x_min+1:x_max+1,y_min+1:y_max+1)))*0.25_8*dt- &
-          (yarea(x_min:x_max  ,y_min:y_max  )*(yvel0(x_min:x_max  ,y_min:y_max  )+yvel0(x_min+1:x_max+1,y_min:y_max)+yvel1(x_min:x_max  ,y_min:y_max  )+yvel1(x_min+1:x_max+1,y_min:y_max  )))*0.25_8*dt
+          min_cell_volume=MIN(volume(j,k)+right_flux-left_flux+top_flux-bottom_flux &
+            ,volume(j,k)+right_flux-left_flux                      &
+            ,volume(j,k)+top_flux-bottom_flux)
+ 
+          recip_volume=1.0/volume(j,k)
 
-          energy1(x_min:x_max,y_min:y_max)=energy0(x_min:x_max,y_min:y_max)-(pressure(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max)+viscosity(x_min:x_max,y_min:y_max)/density0(x_min:x_max,y_min:y_max))*total_flux_arr(x_min:x_max,y_min:y_max)*(1.0/volume(x_min:x_max,y_min:y_max))
+          energy_change=(pressure(j,k)/density0(j,k)+viscosity(j,k)/density0(j,k))*total_flux*recip_volume
 
-          density1(x_min:x_max,y_min:y_max)=density0(x_min:x_max,y_min:y_max)*(volume(x_min:x_max,y_min:y_max)/(volume(x_min:x_max,y_min:y_max)+total_flux_arr(x_min:x_max,y_min:y_max)))
-      !$omp end target teams workdistribute
+          energy1(j,k)=energy0(j,k)-energy_change
 
+          density1(j,k)=density0(j,k)*volume_change_s
+
+        ENDDO
+      ENDDO
 
   ENDIF
 
