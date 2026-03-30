@@ -1,5 +1,5 @@
 src/*.mod
-src/outputs/
-src/outputs_advec_cell_mom_kernels/
+src/outputs*
 src/*.o
 clover_leaf
+src/benchmark*\.log
