@@ -45,7 +45,7 @@ CONTAINS
                                post_mass,   &
                                advec_vol,   &
                                post_ener,   &
-                               ener_flux    )
+                               ener_flux)
 
     IMPLICIT NONE
 
@@ -77,25 +77,40 @@ CONTAINS
     REAL(KIND=8) :: diffuw,diffdw,limiter
     REAL(KIND=8) :: one_by_six=1.0_8/6.0_8
     REAL(KIND=8) :: pre_mass_s,post_mass_s,post_ener_s,advec_vol_s
+    REAL(KIND=8), DIMENSION(x_min-2:x_max+3,y_min-2:y_max+3) :: pre_mass_s_arr, post_mass_s_arr, post_ener_s_arr, advec_vol_s_arr
 
 
     IF(dir.EQ.g_xdir) THEN
       IF(sweep_number.EQ.1)THEN
-!$omp target teams distribute parallel do simd collapse(2)
-        DO k=y_min-2,y_max+2
-          DO j=x_min-2,x_max+2
-            pre_vol(j,k)=volume(j,k)+(vol_flux_x(j+1,k  )-vol_flux_x(j,k)+vol_flux_y(j  ,k+1)-vol_flux_y(j,k))
-            post_vol(j,k)=pre_vol(j,k)-(vol_flux_x(j+1,k  )-vol_flux_x(j,k))
-          ENDDO
-        ENDDO
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min-2,y_max+2
+!           DO j=x_min-2,x_max+2
+!             pre_vol(j,k)=volume(j,k)+(vol_flux_x(j+1,k  )-vol_flux_x(j,k)+vol_flux_y(j  ,k+1)-vol_flux_y(j,k))
+!             post_vol(j,k)=pre_vol(j,k)-(vol_flux_x(j+1,k  )-vol_flux_x(j,k))
+!           ENDDO
+!         ENDDO
+
+!$omp target teams workdistribute
+    pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)+(vol_flux_x(x_min-1:x_max+3,y_min-2:y_max+2)-vol_flux_x(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_y(x_min-2:x_max+2  ,y_min-1:y_max+3)-vol_flux_y(x_min-2:x_max+2,y_min-2:y_max+2))
+    post_vol(x_min-2:x_max+2,y_min-2:y_max+2)=pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)-(vol_flux_x(x_min-1:x_max+3,y_min-2:y_max+2  )-vol_flux_x(x_min-2:x_max+2,y_min-2:y_max+2))
+!$omp end target teams workdistribute
+
+
       ELSE
-!$omp target teams distribute parallel do simd collapse(2)
-        DO k=y_min-2,y_max+2
-          DO j=x_min-2,x_max+2
-            pre_vol(j,k)=volume(j,k)+vol_flux_x(j+1,k)-vol_flux_x(j,k)
-            post_vol(j,k)=volume(j,k)
-          ENDDO
-        ENDDO
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min-2,y_max+2
+!           DO j=x_min-2,x_max+2
+!             pre_vol(j,k)=volume(j,k)+vol_flux_x(j+1,k)-vol_flux_x(j,k)
+!             post_vol(j,k)=volume(j,k)
+!           ENDDO
+!         ENDDO
+
+!$omp target teams workdistribute
+    pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_x(x_min-1:x_max+3,y_min-2:y_max+2)-vol_flux_x(x_min-2:x_max+2,y_min-2:y_max+2)
+    post_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)
+!$omp end target teams workdistribute
+
+
 
       ENDIF
 !$omp target teams distribute parallel do simd collapse(2)
@@ -149,36 +164,65 @@ CONTAINS
 
         ENDDO
       ENDDO
-!$omp target teams distribute parallel do simd collapse(2)
-      DO k=y_min,y_max
-        DO j=x_min,x_max
-          pre_mass_s=density1(j,k)*pre_vol(j,k)
-          post_mass_s=pre_mass_s+mass_flux_x(j,k)-mass_flux_x(j+1,k)
-          post_ener_s=(energy1(j,k)*pre_mass_s+ener_flux(j,k)-ener_flux(j+1,k))/post_mass_s
-          advec_vol_s=pre_vol(j,k)+vol_flux_x(j,k)-vol_flux_x(j+1,k)
-          density1(j,k)=post_mass_s/advec_vol_s
-          energy1(j,k)=post_ener_s
-        ENDDO
-      ENDDO
+! !$omp target teams distribute parallel do simd collapse(2)
+!       DO k=y_min,y_max
+!         DO j=x_min,x_max
+!           pre_mass_s=density1(j,k)*pre_vol(j,k)
+!           post_mass_s=pre_mass_s+mass_flux_x(j,k)-mass_flux_x(j+1,k)
+!           post_ener_s=(energy1(j,k)*pre_mass_s+ener_flux(j,k)-ener_flux(j+1,k))/post_mass_s
+!           advec_vol_s=pre_vol(j,k)+vol_flux_x(j,k)-vol_flux_x(j+1,k)
+!           density1(j,k)=post_mass_s/advec_vol_s
+!           energy1(j,k)=post_ener_s
+!         ENDDO
+!       ENDDO
+
+
+!$omp target teams workdistribute private(pre_mass_s_arr, post_mass_s_arr, post_ener_s_arr, advec_vol_s_arr)
+    pre_mass_s_arr(x_min:x_max,y_min:y_max)=density1(x_min:x_max,y_min:y_max)*pre_vol(x_min:x_max,y_min:y_max)
+    post_mass_s_arr(x_min:x_max,y_min:y_max)=pre_mass_s_arr(x_min:x_max,y_min:y_max)+mass_flux_x(x_min:x_max,y_min:y_max)-mass_flux_x(x_min+1:x_max+1,y_min:y_max)
+    post_ener_s_arr(x_min:x_max,y_min:y_max)=(energy1(x_min:x_max,y_min:y_max)*pre_mass_s_arr(x_min:x_max,y_min:y_max)+ener_flux(x_min:x_max,y_min:y_max)-ener_flux(x_min+1:x_max+1,y_min:y_max))/post_mass_s_arr(x_min:x_max,y_min:y_max)
+    advec_vol_s_arr(x_min:x_max,y_min:y_max)=pre_vol(x_min:x_max,y_min:y_max)+vol_flux_x(x_min:x_max,y_min:y_max)-vol_flux_x(x_min+1:x_max+1,y_min:y_max)
+    density1(x_min:x_max,y_min:y_max)=post_mass_s_arr(x_min:x_max,y_min:y_max)/advec_vol_s_arr(x_min:x_max,y_min:y_max)
+    energy1(x_min:x_max,y_min:y_max)=post_ener_s_arr(x_min:x_max,y_min:y_max)
+!$omp end target teams workdistribute
+
+
 
     ELSEIF(dir.EQ.g_ydir) THEN
 
       IF(sweep_number.EQ.1)THEN
-!$omp target teams distribute parallel do simd collapse(2)
-        DO k=y_min-2,y_max+2
-          DO j=x_min-2,x_max+2
-            pre_vol(j,k)=volume(j,k)+(vol_flux_y(j  ,k+1)-vol_flux_y(j,k)+vol_flux_x(j+1,k  )-vol_flux_x(j,k))
-            post_vol(j,k)=pre_vol(j,k)-(vol_flux_y(j  ,k+1)-vol_flux_y(j,k))
-          ENDDO
-        ENDDO
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min-2,y_max+2
+!           DO j=x_min-2,x_max+2
+!             pre_vol(j,k)=volume(j,k)+(vol_flux_y(j  ,k+1)-vol_flux_y(j,k)+vol_flux_x(j+1,k  )-vol_flux_x(j,k))
+!             post_vol(j,k)=pre_vol(j,k)-(vol_flux_y(j  ,k+1)-vol_flux_y(j,k))
+!           ENDDO
+!         ENDDO
+
+!$omp target teams workdistribute
+    pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)+(vol_flux_y(x_min-2:x_max+2,y_min-1:y_max+3)-vol_flux_y(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_x(x_min-1:x_max+3,y_min-2:y_max+2  )-vol_flux_x(x_min-2:x_max+2,y_min-2:y_max+2))
+    post_vol(x_min-2:x_max+2,y_min-2:y_max+2)=pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)-(vol_flux_y(x_min-2:x_max+2,y_min-1:y_max+3)-vol_flux_y(x_min-2:x_max+2,y_min-2:y_max+2))
+!$omp end target teams workdistribute
+
+
+
+
       ELSE
-!$omp target teams distribute parallel do simd collapse(2)
-        DO k=y_min-2,y_max+2
-          DO j=x_min-2,x_max+2
-            pre_vol(j,k)=volume(j,k)+vol_flux_y(j  ,k+1)-vol_flux_y(j,k)
-            post_vol(j,k)=volume(j,k)
-          ENDDO
-        ENDDO
+! !$omp target teams distribute parallel do simd collapse(2)
+!         DO k=y_min-2,y_max+2
+!           DO j=x_min-2,x_max+2
+!             pre_vol(j,k)=volume(j,k)+vol_flux_y(j  ,k+1)-vol_flux_y(j,k)
+!             post_vol(j,k)=volume(j,k)
+!           ENDDO
+!         ENDDO
+
+
+
+!$omp target teams workdistribute
+    pre_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)+vol_flux_y(x_min-2:x_max+2,y_min-1:y_max+3)-vol_flux_y(x_min-2:x_max+2,y_min-2:y_max+2)
+    post_vol(x_min-2:x_max+2,y_min-2:y_max+2)=volume(x_min-2:x_max+2,y_min-2:y_max+2)
+!$omp end target teams workdistribute
+
       ENDIF
 !$omp target teams distribute parallel do simd collapse(2)
       DO k=y_min,y_max+2
@@ -230,17 +274,27 @@ CONTAINS
 
         ENDDO
       ENDDO
-!$omp target teams distribute parallel do simd collapse(2)
-      DO k=y_min,y_max
-        DO j=x_min,x_max
-          pre_mass_s=density1(j,k)*pre_vol(j,k)
-          post_mass_s=pre_mass_s+mass_flux_y(j,k)-mass_flux_y(j,k+1)
-          post_ener_s=(energy1(j,k)*pre_mass_s+ener_flux(j,k)-ener_flux(j,k+1))/post_mass_s
-          advec_vol_s=pre_vol(j,k)+vol_flux_y(j,k)-vol_flux_y(j,k+1)
-          density1(j,k)=post_mass_s/advec_vol_s
-          energy1(j,k)=post_ener_s
-        ENDDO
-      ENDDO
+! !$omp target teams distribute parallel do simd collapse(2)
+!       DO k=y_min,y_max
+!         DO j=x_min,x_max
+!           pre_mass_s=density1(j,k)*pre_vol(j,k)
+!           post_mass_s=pre_mass_s+mass_flux_y(j,k)-mass_flux_y(j,k+1)
+!           post_ener_s=(energy1(j,k)*pre_mass_s+ener_flux(j,k)-ener_flux(j,k+1))/post_mass_s
+!           advec_vol_s=pre_vol(j,k)+vol_flux_y(j,k)-vol_flux_y(j,k+1)
+!           density1(j,k)=post_mass_s/advec_vol_s
+!           energy1(j,k)=post_ener_s
+!         ENDDO
+!       ENDDO
+!
+!$omp target teams workdistribute private(pre_mass_s_arr, post_mass_s_arr, post_ener_s_arr, advec_vol_s_arr)
+  pre_mass_s_arr(x_min:x_max,y_min:y_max)=density1(x_min:x_max,y_min:y_max)*pre_vol(x_min:x_max,y_min:y_max)
+  post_mass_s_arr(x_min:x_max,y_min:y_max)=pre_mass_s_arr(x_min:x_max,y_min:y_max)+mass_flux_y(x_min:x_max,y_min:y_max)-mass_flux_y(x_min:x_max,y_min+1:y_max+1)
+  post_ener_s_arr(x_min:x_max,y_min:y_max)=(energy1(x_min:x_max,y_min:y_max)*pre_mass_s_arr(x_min:x_max,y_min:y_max)+ener_flux(x_min:x_max,y_min:y_max)-ener_flux(x_min:x_max,y_min+1:y_max+1))/post_mass_s_arr(x_min:x_max,y_min:y_max)
+  advec_vol_s_arr(x_min:x_max,y_min:y_max)=pre_vol(x_min:x_max,y_min:y_max)+vol_flux_y(x_min:x_max,y_min:y_max)-vol_flux_y(x_min:x_max,y_min+1:y_max+1)
+  density1(x_min:x_max,y_min:y_max)=post_mass_s_arr(x_min:x_max,y_min:y_max)/advec_vol_s_arr(x_min:x_max,y_min:y_max)
+  energy1(x_min:x_max,y_min:y_max)=post_ener_s_arr(x_min:x_max,y_min:y_max)
+!$omp end target teams workdistribute 
+
 
     ENDIF
 
